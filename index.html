@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moody Fixed Template</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,600&family=Montserrat:wght@300;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root { --bg: #000; --text: #fff; }
+        body { background-color: var(--bg); color: var(--text); font-family: 'Montserrat', sans-serif; margin: 0; padding: 0; }
+        
+        .container { width: 100%; max-width: 500px; margin: 0 auto; display: none; flex-direction: column; border: 1px solid #111; }
+
+        /* التحكم في حجم كل بلوك بظبط */
+        .block { 
+            width: 100%; 
+            position: relative; 
+            overflow: hidden; 
+            background: #0a0a0a; 
+            cursor: pointer;
+            border-bottom: 2px solid #000;
+        }
+
+        /* تحديد ارتفاعات ثابتة لكل صف */
+        .h-large { height: 250px; } /* الصورة اللي فوق واللي تحتها */
+        .h-split { height: 350px; } /* الصور اللي جنب بعض */
+        .h-bottom { height: 450px; } /* الصورة الكبيرة اللي تحت */
+
+        .block img { 
+            width: 100%; 
+            height: 100%; 
+            object-fit: cover; 
+            display: block; 
+        }
+        
+        /* الصور اللي جنب بعض */
+        .row { display: flex; width: 100%; }
+        .row .block { width: 50%; border-right: 2px solid #000; }
+
+        /* ستايل الكلام في أماكنه */
+        .overlay-text { position: absolute; width: 100%; text-align: center; pointer-events: auto; z-index: 10; }
+        .text-main { bottom: 20px; font-family: 'Cormorant Garamond', serif; font-size: 2.2rem; font-style: italic; text-shadow: 0 0 20px #000; }
+        .text-date { top: 30px; font-size: 0.75rem; letter-spacing: 4px; font-weight: 700; line-height: 1.6; text-shadow: 0 0 15px #000; }
+
+        /* شريط التحكم */
+        .nav-bar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); padding: 10px 20px; border-radius: 50px; z-index: 1000; display: none; gap: 10px; border: 1px solid #333; }
+        .btn { background: #fff; color: #000; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-weight: bold; }
+        
+        .login-box { background: #111; padding: 40px 30px; border-radius: 15px; margin: 100px auto; text-align: center; width: 85%; max-width: 350px; border: 1px solid #222; }
+        input { width: 100%; margin: 10px 0; padding: 14px; background: #000; color: #fff; border: 1px solid #333; border-radius: 5px; box-sizing: border-box; }
+        .editable:focus { outline: 1px solid #fff; background: rgba(255,255,255,0.05); }
+    </style>
+</head>
+<body>
+
+    <div id="login-section" class="login-box">
+        <h2 style="font-weight: 300; letter-spacing: 2px;">LOGIN</h2>
+        <input type="text" id="user" placeholder="Username">
+        <input type="password" id="pass" placeholder="Password">
+        <button class="btn" style="width: 100%;" onclick="login()">Enter Story</button>
+    </div>
+
+    <div id="main-content" class="container">
+        <!-- صف 1: صورة عريضة + نص -->
+        <div class="block h-large" onclick="changeImg(0)">
+            <img id="img0" src="https://via.placeholder.com/500x250/111/111">
+            <div id="txt-main" class="overlay-text text-main editable">eyes never lie</div>
+        </div>
+
+        <!-- صف 2: صورة عريضة -->
+        <div class="block h-large" onclick="changeImg(1)">
+            <img id="img1" src="https://via.placeholder.com/500x250/111/111">
+        </div>
+
+        <!-- صف 3: صورتين جنب بعض + تاريخ -->
+        <div class="row">
+            <div class="block h-split" onclick="changeImg(2)">
+                <img id="img2" src="https://via.placeholder.com/250x350/111/111">
+                <div id="txt-date" class="overlay-text text-date editable">APRIL 4, 2023<br>THE BIG H GROUNDS</div>
+            </div>
+            <div class="block h-split" onclick="changeImg(3)">
+                <img id="img3" src="https://via.placeholder.com/250x350/111/111">
+            </div>
+        </div>
+
+        <!-- صف 4: صورة كبيرة تحت -->
+        <div class="block h-bottom" onclick="changeImg(4)">
+            <img id="img4" src="https://via.placeholder.com/500x450/111/111">
+        </div>
+
+        <div style="height: 100px;"></div>
+    </div>
+
+    <div id="admin-nav" class="nav-bar">
+        <button class="btn" id="save-btn" onclick="saveAll()">Save Design ✨</button>
+    </div>
+
+    <input type="file" id="file-picker" style="display: none;" accept="image/*">
+
+    <script>
+        const supabaseUrl = 'https://ojiogstdxenhiojvsygp.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qaW9nc3RkeGVuaGlvanZzeWdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1OTU3MzIsImV4cCI6MjA5MTE3MTczMn0.Tp1i9Mq8OmrcprPLS5KUdzvRWnj4dVQF5o3yxrPymxw';
+        const _sb = supabase.createClient(supabaseUrl, supabaseKey);
+
+        let pageData = { 
+            images: ["","","","",""], 
+            mainText: "eyes never lie", 
+            dateText: "APRIL 4, 2023\nTHE BIG H GROUNDS" 
+        };
+        let userId = null, isAdmin = false, curIdx = null;
+
+        window.onload = () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('id')) {
+                userId = urlParams.get('id');
+                document.getElementById('login-section').style.display = 'none';
+                loadData(userId);
+            }
+        };
+
+        async function login() {
+            const u = document.getElementById('user').value, p = document.getElementById('pass').value;
+            const { data } = await _sb.from('nfc_users').select('*');
+            const match = data?.find(x => x.username.toLowerCase() === u.toLowerCase() && String(x.password) === p);
+            if (match) {
+                userId = match.id; isAdmin = true;
+                document.getElementById('login-section').style.display = 'none';
+                document.getElementById('admin-nav').style.display = 'flex';
+                loadData(userId);
+            } else alert("Wrong credentials");
+        }
+
+        async function loadData(id) {
+            const { data } = await _sb.from('nfc_users').select('image_url').eq('id', id).single();
+            if (data?.image_url) {
+                try {
+                    const fetched = JSON.parse(data.image_url);
+                    pageData = {
+                        images: fetched.images || ["","","","",""],
+                        mainText: fetched.mainText || "eyes never lie",
+                        dateText: fetched.dateText || "APRIL 4, 2023\nTHE BIG H GROUNDS"
+                    };
+                } catch(e) {
+                    console.error("Old Data Cleared");
+                }
+            }
+            render();
+        }
+
+        function render() {
+            document.getElementById('main-content').style.display = 'flex';
+            document.getElementById('txt-main').innerText = pageData.mainText || "eyes never lie";
+            document.getElementById('txt-date').innerText = pageData.dateText || "Date Here";
+            
+            document.querySelectorAll('.editable').forEach(el => el.contentEditable = isAdmin);
+            
+            for(let i=0; i<5; i++) {
+                const imgEl = document.getElementById('img' + i);
+                if (pageData.images[i]) {
+                    imgEl.src = pageData.images[i];
+                }
+            }
+        }
+
+        function changeImg(idx) { 
+            if (isAdmin) { 
+                curIdx = idx; 
+                document.getElementById('file-picker').value = ''; 
+                document.getElementById('file-picker').click(); 
+            } 
+        }
+
+        // هنا السحر: ضغط الصور تلقائياً قبل ما تترفع
+        document.getElementById('file-picker').onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return; 
+            
+            const reader = new FileReader();
+            reader.onload = (ev) => { 
+                const img = new Image();
+                img.onload = () => {
+                    let width = img.width;
+                    let height = img.height;
+                    const MAX_SIZE = 1000; // تصغير الأبعاد لـ 1000 بكسل كحد أقصى
+
+                    if (width > MAX_SIZE || height > MAX_SIZE) {
+                        if (width > height) {
+                            height = Math.round((height * MAX_SIZE) / width);
+                            width = MAX_SIZE;
+                        } else {
+                            width = Math.round((width * MAX_SIZE) / height);
+                            height = MAX_SIZE;
+                        }
+                    }
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    // تحويل الصورة لمسار Base64 مضغوط بجودة 75%
+                    pageData.images[curIdx] = canvas.toDataURL('image/jpeg', 0.75); 
+                    render(); 
+                };
+                img.src = ev.target.result;
+            };
+            reader.readAsDataURL(file);
+        };
+
+        async function saveAll() {
+            const btn = document.getElementById('save-btn'); 
+            btn.innerText = "Saving...";
+            
+            pageData.mainText = document.getElementById('txt-main').innerText;
+            pageData.dateText = document.getElementById('txt-date').innerText;
+            
+            const { error } = await _sb.from('nfc_users').update({ image_url: JSON.stringify(pageData) }).eq('id', userId);
+            
+            if (error) {
+                // شلنا رسالة الـ 5 ميجا خالص
+                alert("حصل خطأ في الحفظ، جرب تاني.");
+                btn.innerText = "Error ❌";
+            } else {
+                btn.innerText = "Saved ✨";
+            }
+            setTimeout(() => btn.innerText = "Save Design ✨", 2000);
+        }
+    </script>
+</body>
+</html>
