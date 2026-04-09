@@ -3,185 +3,202 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Moody NFC Story - Master</title>
+    <title>NFC Story - Control Panel</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,600&family=Montserrat:wght@300;700&display=swap" rel="stylesheet">
     
     <style>
-        :root { --bg: #000; --text: #fff; }
-        body { background-color: var(--bg); color: var(--text); font-family: 'Montserrat', sans-serif; margin: 0; padding: 0; overflow-x: hidden; }
+        :root { --bg: #000; --text: #fff; --accent: #444; }
+        .theme-pink { --bg: #ffe0eb; --text: #c71585; --accent: #ffb6c1; }
+        .theme-blue { --bg: #e0f7fa; --text: #006064; --accent: #81d4fa; }
+
+        body { background-color: var(--bg); color: var(--text); font-family: 'Montserrat', sans-serif; margin: 0; padding: 0; transition: 0.3s; overflow-x: hidden; }
         
-        .container { width: 100%; max-width: 500px; margin: 0 auto; display: none; flex-direction: column; border: 1px solid #111; }
-
-        /* ستايل المربعات الثابتة */
-        .block { width: 100%; position: relative; overflow: hidden; background: #0a0a0a; cursor: pointer; border-bottom: 2px solid #000; }
-        .h-large { height: 250px; } 
-        .h-split { height: 350px; } 
-        .h-bottom { height: 450px; } 
-
-        .block img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .nav-bar { position: fixed; bottom: 15px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.9); backdrop-filter: blur(10px); padding: 12px 25px; border-radius: 40px; z-index: 2000; display: none; flex-direction: column; gap: 10px; border: 1px solid #444; align-items: center; width: 90%; max-width: 400px; box-shadow: 0 -10px 30px rgba(0,0,0,0.5); }
+        .btn { background: #fff; color: #000; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-weight: bold; font-size: 0.85rem; transition: 0.2s; }
+        .btn:active { transform: scale(0.95); }
         
-        .row { display: flex; width: 100%; }
-        .row .block { width: 50%; border-right: 2px solid #000; }
+        #login-section { display: flex; flex-direction: column; background: #111; padding: 40px 30px; border-radius: 25px; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 85%; max-width: 340px; z-index: 3000; border: 1px solid #333; box-shadow: 0 0 80px rgba(0,0,0,1); }
+        input { width: 100%; margin: 10px 0; padding: 15px; background: #000; color: #fff; border: 1px solid #444; border-radius: 10px; box-sizing: border-box; font-size: 1rem; outline: none; }
 
-        /* نصوص فوق الصور */
-        .overlay-text { position: absolute; width: 100%; text-align: center; pointer-events: auto; z-index: 10; }
-        .text-main { bottom: 20px; font-family: 'Cormorant Garamond', serif; font-size: 2.2rem; font-style: italic; text-shadow: 0 0 20px #000; }
-        .text-date { top: 30px; font-size: 0.75rem; letter-spacing: 4px; font-weight: 700; line-height: 1.6; text-shadow: 0 0 15px #000; }
+        #main-wrapper { display: none; opacity: 0; transition: opacity 0.6s ease; padding-bottom: 120px; }
 
-        /* شريط الإدارة */
-        .nav-bar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); padding: 10px 20px; border-radius: 50px; z-index: 1000; display: none; gap: 10px; border: 1px solid #333; }
-        .btn { background: #fff; color: #000; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-weight: bold; }
-        
-        /* صندوق اللوجن */
-        .login-box { background: #111; padding: 40px 30px; border-radius: 15px; margin: 100px auto; text-align: center; width: 85%; max-width: 350px; border: 1px solid #222; }
-        input { width: 100%; margin: 10px 0; padding: 14px; background: #000; color: #fff; border: 1px solid #333; border-radius: 5px; box-sizing: border-box; }
-        .editable:focus { outline: 1px solid #fff; background: rgba(255,255,255,0.05); }
+        #grid-layout { display: none; width: 100%; max-width: 500px; margin: 0 auto; flex-direction: column; }
+        .block { width: 100%; position: relative; overflow: hidden; background: #0a0a0a; border-bottom: 2px solid #000; }
+        .h-large { height: 260px; } .h-split { height: 360px; } .h-bottom { height: 460px; }
+        .block img { width: 100%; height: 100%; object-fit: cover; }
+        .row { display: flex; width: 100%; } .row .block { width: 50%; border-right: 2px solid #000; }
+        .overlay-text { position: absolute; width: 100%; text-align: center; color: #fff; text-shadow: 0 2px 10px rgba(0,0,0,0.8); }
+        .text-main { bottom: 25px; font-family: 'Cormorant Garamond', serif; font-size: 2.2rem; font-style: italic; }
+        .text-date { top: 35px; font-size: 0.75rem; letter-spacing: 4px; font-weight: 700; }
+
+        #stack-layout { display: none; height: 100vh; flex-direction: column; align-items: center; padding-top: 40px; overflow: hidden; }
+        .image-stack { position: relative; width: 290px; height: 290px; perspective: 1000px; margin-top: 25px; }
+        .stack-image { position: absolute; width: 100%; height: 100%; object-fit: cover; border-radius: 25px; box-shadow: 0 15px 40px rgba(0,0,0,0.5); transition: 0.5s; touch-action: none; border: 4px solid rgba(255,255,255,0.15); }
+        #stack-long-story { font-size: 1rem; text-align: center; max-width: 85%; margin-bottom: 25px; max-height: 25vh; overflow-y: auto; line-height: 1.6; }
+
+        .editable { cursor: pointer; }
+        .theme-dots { display: none; gap: 10px; }
+        .dot { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #fff; cursor: pointer; }
     </style>
 </head>
-<body>
+<body id="body">
 
-    <!-- قسم تسجيل الدخول -->
-    <div id="login-section" class="login-box">
-        <h2 style="font-weight: 300; letter-spacing: 2px;">ACCESS</h2>
+    <div id="login-section">
+        <h2 style="text-align:center; font-weight:300; margin-bottom:20px; letter-spacing:3px;">LOGIN</h2>
         <input type="text" id="user" placeholder="Username">
         <input type="password" id="pass" placeholder="Password">
-        <button class="btn" style="width: 100%;" onclick="login()">Enter Story</button>
+        <button class="btn" style="width:100%; margin-top:15px; height:55px; font-size:1.1rem;" onclick="login()">Enter Dashboard</button>
     </div>
 
-    <!-- قسم المحتوى الرئيسي -->
-    <div id="main-content" class="container">
-        <div class="block h-large" onclick="changeImg(0)">
-            <img id="img0" src="https://via.placeholder.com/500x250/111/111?text=Click+to+Upload">
-            <div id="txt-main" class="overlay-text text-main editable">eyes never lie</div>
-        </div>
+    <div id="main-wrapper">
+        <header style="height: 40px;"></header>
 
-        <div class="block h-large" onclick="changeImg(1)">
-            <img id="img1" src="https://via.placeholder.com/500x250/111/111">
-        </div>
-
-        <div class="row">
-            <div class="block h-split" onclick="changeImg(2)">
-                <img id="img2" src="https://via.placeholder.com/250x350/111/111">
-                <div id="txt-date" class="overlay-text text-date editable">APRIL 4, 2023<br>THE BIG H GROUNDS</div>
+        <div id="grid-layout">
+            <div class="block h-large" onclick="changeImg(0)"><img id="g-img0" src=""><div id="g-txt-main" class="overlay-text text-main" onclick="editMe(this)">Title</div></div>
+            <div class="block h-large" onclick="changeImg(1)"><img id="g-img1" src=""></div>
+            <div class="row">
+                <div class="block h-split" onclick="changeImg(2)"><img id="g-img2" src=""><div id="g-txt-date" class="overlay-text text-date" onclick="editMe(this)">DATE</div></div>
+                <div class="block h-split" onclick="changeImg(3)"><img id="g-img3" src=""></div>
             </div>
-            <div class="block h-split" onclick="changeImg(3)">
-                <img id="img3" src="https://via.placeholder.com/250x350/111/111">
+            <div class="block h-bottom" onclick="changeImg(4)"><img id="g-img4" src=""></div>
+        </div>
+
+        <div id="stack-layout">
+            <h2 id="s-txt-title" onclick="editMe(this)" style="font-family:'Cormorant Garamond';font-size:2.5rem; font-style:italic;">Our Story</h2>
+            <div id="stack-long-story" onclick="editMe(this)">Click to write your story...</div>
+            <div class="image-stack" id="image-stack"></div>
+        </div>
+
+        <div id="admin-nav" class="nav-bar">
+            <div class="controls">
+                <button class="btn" onclick="switchLayout()">Switch Style 🔄</button>
+                <div id="theme-dots" class="theme-dots">
+                    <div class="dot" style="background:#000" onclick="setTheme('black')"></div>
+                    <div class="dot" style="background:#ffb6c1" onclick="setTheme('pink')"></div>
+                    <div class="dot" style="background:#81d4fa" onclick="setTheme('blue')"></div>
+                </div>
             </div>
+            <button class="btn" style="background:#4caf50; color:#fff; width: 100%;" id="save-btn" onclick="saveAll()">Save Everything ✨</button>
         </div>
-
-        <div class="block h-bottom" onclick="changeImg(4)">
-            <img id="img4" src="https://via.placeholder.com/500x450/111/111">
-        </div>
-        <div style="height: 100px;"></div>
-    </div>
-
-    <div id="admin-nav" class="nav-bar">
-        <button class="btn" id="save-btn" onclick="saveAll()">Save Changes ✨</button>
     </div>
 
     <input type="file" id="file-picker" style="display: none;" accept="image/*">
 
     <script>
-        // إعدادات سوبابيز
         const supabaseUrl = 'https://ojiogstdxenhiojvsygp.supabase.co';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qaW9nc3RkeGVuaGlvanZzeWdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1OTU3MzIsImV4cCI6MjA5MTE3MTczMn0.Tp1i9Mq8OmrcprPLS5KUdzvRWnj4dVQF5o3yxrPymxw';
         const _sb = supabase.createClient(supabaseUrl, supabaseKey);
 
-        let pageData = { images: ["","","","",""], mainText: "eyes never lie", dateText: "APRIL 4, 2023\nTHE BIG H GROUNDS" };
-        let userId = null, isAdmin = false, curIdx = null;
-
-        window.onload = () => {
-            const urlParams = new URLSearchParams(window.location.search);
-            const id = urlParams.get('id');
-            if (id) {
-                userId = id;
-                document.getElementById('login-section').style.display = 'none';
-                loadData(id);
-            }
-        };
+        let pageData = { layout: 'grid', theme: 'black', images: ["","","","",""], gridMain: "Title", gridDate: "DATE", stackTitle: "Our Story", stackStory: "Click to write your story..." };
+        let userId = null;
 
         async function login() {
             const u = document.getElementById('user').value.trim();
             const p = document.getElementById('pass').value.trim();
-            const { data, error } = await _sb.from('nfc_users').select('*');
-            
-            if (error) { alert("Error: " + error.message); return; }
-
-            const match = data?.find(x => 
-                String(x.username).toLowerCase() === u.toLowerCase() && 
-                String(x.password) === p
-            );
-
-            if (match) {
-                userId = match.id; isAdmin = true;
+            const { data } = await _sb.from('nfc_users').select('*').eq('username', u).eq('password', p).single();
+            if (data) {
+                userId = data.id;
+                if (data.image_url) try { pageData = { ...pageData, ...JSON.parse(data.image_url) }; } catch(e){}
                 document.getElementById('login-section').style.display = 'none';
+                document.getElementById('main-wrapper').style.display = 'block';
+                setTimeout(() => document.getElementById('main-wrapper').style.opacity = '1', 50);
                 document.getElementById('admin-nav').style.display = 'flex';
-                loadData(userId);
-            } else { alert("البيانات غلط يا كيمو! تأكد من الجدول."); }
-        }
-
-        async function loadData(id) {
-            const { data } = await _sb.from('nfc_users').select('image_url').eq('id', id).single();
-            if (data?.image_url) {
-                try {
-                    const fetched = JSON.parse(data.image_url);
-                    pageData = {
-                        images: fetched.images || ["","","","",""],
-                        mainText: fetched.mainText || "eyes never lie",
-                        dateText: fetched.dateText || "Date Here"
-                    };
-                } catch(e) { console.log("New User setup"); }
-            }
-            render();
+                render();
+            } else alert("Invalid Login");
         }
 
         function render() {
-            document.getElementById('main-content').style.display = 'flex';
-            document.getElementById('txt-main').innerText = pageData.mainText;
-            document.getElementById('txt-date').innerText = pageData.dateText;
-            document.querySelectorAll('.editable').forEach(el => el.contentEditable = isAdmin);
-            for(let i=0; i<5; i++) {
-                if (pageData.images[i]) document.getElementById('img' + i).src = pageData.images[i];
+            document.getElementById('grid-layout').style.display = pageData.layout === 'grid' ? 'flex' : 'none';
+            document.getElementById('stack-layout').style.display = pageData.layout === 'stack' ? 'flex' : 'none';
+            document.getElementById('theme-dots').style.display = pageData.layout === 'stack' ? 'flex' : 'none';
+            setTheme(pageData.theme);
+            document.getElementById('g-txt-main').innerText = pageData.gridMain;
+            document.getElementById('g-txt-date').innerText = pageData.gridDate;
+            document.getElementById('s-txt-title').innerText = pageData.stackTitle;
+            document.getElementById('stack-long-story').innerText = pageData.stackStory;
+            for(let i=0; i<5; i++){
+                const src = pageData.images[i] || 'https://via.placeholder.com/400/111/fff?text=Click+to+Upload';
+                if(pageData.layout === 'grid') document.getElementById('g-img'+i).src = src;
             }
+            if(pageData.layout === 'stack') renderStack();
+            document.querySelectorAll('.editable, .overlay-text, #s-txt-title, #stack-long-story').forEach(el => el.classList.add('editable'));
         }
 
-        function changeImg(idx) { 
-            if (isAdmin) { curIdx = idx; document.getElementById('file-picker').value=''; document.getElementById('file-picker').click(); } 
+        function renderStack() {
+            const container = document.getElementById('image-stack');
+            container.innerHTML = '';
+            pageData.images.forEach((src, i) => {
+                const img = document.createElement('img');
+                img.className = 'stack-image';
+                img.src = src || 'https://via.placeholder.com/400/111/fff?text=Click+to+Upload';
+                img.onclick = () => { if(img.style.zIndex == "5") changeImg(i); }; // إضافة الصورة بلمسة واحدة
+                initSwipe(img);
+                container.appendChild(img);
+            });
+            updateStackUI();
         }
 
-        document.getElementById('file-picker').onchange = (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
+        function updateStackUI() {
+            const imgs = document.querySelectorAll('.stack-image');
+            imgs.forEach((img, i) => {
+                const diff = (i - (sIdx % 5) + 5) % 5;
+                img.style.zIndex = 5 - diff;
+                img.style.transform = `translateY(-${diff * 8}px) scale(${1 - diff * 0.06}) rotate(${diff * -3}deg)`;
+                img.style.opacity = diff < 3 ? 1 : 0;
+            });
+        }
+
+        let sIdx = 0;
+        function initSwipe(img) {
+            let startX = 0;
+            img.onpointerdown = e => { startX = e.clientX; img.style.transition = 'none'; };
+            img.onpointermove = e => { if(startX) img.style.transform += ` translateX(${e.clientX - startX}px) rotate(${(e.clientX - startX)/12}deg)`; };
+            img.onpointerup = e => {
+                const diff = e.clientX - startX;
+                img.style.transition = '0.5s';
+                if(Math.abs(diff) > 80) {
+                    img.style.transform = `translateX(${diff > 0 ? 600 : -600}px) opacity(0)`;
+                    setTimeout(() => { sIdx++; updateStackUI(); }, 200);
+                } else updateStackUI();
+                startX = 0;
+            };
+        }
+
+        let curIdx = 0;
+        function changeImg(i) { curIdx = i; document.getElementById('file-picker').click(); }
+        document.getElementById('file-picker').onchange = e => {
             const reader = new FileReader();
-            reader.onload = (ev) => {
+            reader.onload = ev => {
                 const img = new Image();
                 img.onload = () => {
                     const canvas = document.createElement('canvas');
                     let w = img.width, h = img.height, max = 1000;
-                    if (w > max || h > max) {
-                        if (w > h) { h = Math.round((h * max) / w); w = max; }
-                        else { w = Math.round((w * max) / h); h = max; }
-                    }
+                    if (w > max || h > max) { if (w > h) { h = (h*max)/w; w = max; } else { w = (w*max)/h; h = max; } }
                     canvas.width = w; canvas.height = h;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, w, h);
+                    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
                     pageData.images[curIdx] = canvas.toDataURL('image/jpeg', 0.7);
                     render();
                 };
                 img.src = ev.target.result;
             };
-            reader.readAsDataURL(file);
+            reader.readAsDataURL(e.target.files[0]);
         };
+
+        function editMe(el) { el.contentEditable = true; el.focus(); }
+        function switchLayout() { pageData.layout = pageData.layout === 'grid' ? 'stack' : 'grid'; render(); }
+        function setTheme(t) { pageData.theme = t; document.getElementById('body').className = (t === 'black') ? '' : 'theme-' + t; }
 
         async function saveAll() {
             const btn = document.getElementById('save-btn');
             btn.innerText = "Saving...";
-            pageData.mainText = document.getElementById('txt-main').innerText;
-            pageData.dateText = document.getElementById('txt-date').innerText;
+            pageData.gridMain = document.getElementById('g-txt-main').innerText;
+            pageData.gridDate = document.getElementById('g-txt-date').innerText;
+            pageData.stackTitle = document.getElementById('s-txt-title').innerText;
+            pageData.stackStory = document.getElementById('stack-long-story').innerText;
             const { error } = await _sb.from('nfc_users').update({ image_url: JSON.stringify(pageData) }).eq('id', userId);
-            if (error) { alert("Error saving!"); btn.innerText = "Retry"; }
-            else { btn.innerText = "Saved ✨"; setTimeout(() => btn.innerText = "Save Changes ✨", 2000); }
+            btn.innerText = error ? "Error" : "Saved ✨";
+            setTimeout(() => btn.innerText = "Save Everything ✨", 2000);
         }
     </script>
 </body>
